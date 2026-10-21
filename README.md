@@ -93,7 +93,8 @@ docs/
   RESULTS.md                Main conclusions and limitations
   METHODOLOGY.md            Protocol and metric definitions
   STAR.md                   Resume and interview narrative
-  CONVERSATION_HISTORY.md   Sanitized project conversation history
+  CONVERSATION_HISTORY.md   Complete redacted project conversation
+  CONVERSATION_SUMMARY.md   Curated project history
 ```
 
 ## Reproduction
@@ -186,7 +187,8 @@ python analysis/plot_public_results.py
 - [Results and conclusions](docs/RESULTS.md)
 - [Methodology](docs/METHODOLOGY.md)
 - [STAR narrative](docs/STAR.md)
-- [Sanitized conversation history](docs/CONVERSATION_HISTORY.md)
+- [Complete redacted conversation](docs/CONVERSATION_HISTORY.md)
+- [Conversation summary](docs/CONVERSATION_SUMMARY.md)
 
 SQuAD v1.1 data is redistributed with attribution to the original dataset.
 Qwen model weights are not included.

@@ -1,0 +1,14 @@
+{
+  "selected_cells": 728,
+  "expected_cells": 728,
+  "planned_requests": 58240,
+  "missing_cells": 0,
+  "unexpected_cells": 0,
+  "wrong_cell_request_counts": 0,
+  "selected_requests": 58240,
+  "expected_requests": 58240,
+  "request_errors": 0,
+  "cross_hardware_input_pairs": 23520,
+  "unpaired_closed_loop_requests": 0,
+  "input_hash_mismatches": 0
+}

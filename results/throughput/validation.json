@@ -1,0 +1,34 @@
+{
+  "measurements": 1326,
+  "required_sweep_cells": 480,
+  "missing_sweep_cells": [],
+  "missing_quality_groups": [],
+  "quality_answers": 2176,
+  "cross_hardware_repeat_pairs": 540,
+  "input_hash_mismatches": [],
+  "workload_sha256": "fd8157d6da6234b47642c5e154f2c9b25a7d093cdeff06fa40811b51fa3cb8d2",
+  "errors": [],
+  "measured_shapes_by_hardware": {
+    "h20": 738,
+    "npu": 588
+  },
+  "quality_groups": {
+    "('h20', '2b', 'combo')": 128,
+    "('h20', '4b', 'combo')": 128,
+    "('h20', '4b', 'compileonly')": 128,
+    "('h20', '4b', 'fp8graph')": 128,
+    "('h20', '4b', 'fp8mtp')": 128,
+    "('h20', '4b', 'graphonly')": 128,
+    "('h20', '4b', 'mtp')": 128,
+    "('h20', '9b', 'combo')": 128,
+    "('h20', '4b', 'baseline')": 128,
+    "('h20', '4b', 'fp8')": 128,
+    "('npu', 'q3-4b', 'combo')": 128,
+    "('npu', '2b', 'combo')": 128,
+    "('npu', '9b', 'combo')": 128,
+    "('npu', '4b', 'combo')": 128,
+    "('npu', '14b', 'combo')": 128,
+    "('h20', '14b', 'combo')": 128,
+    "('h20', 'q3-4b', 'combo')": 128
+  }
+}

@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Local model weights and raw benchmark output are intentionally excluded.
+models/
+*.safetensors
+*.bin
+*.log
+requests.jsonl

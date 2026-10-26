@@ -25,11 +25,12 @@ HeteroInferLab 是一套 H20 与 Ascend 910B4 单卡大模型推理对比实验�
 
 第一次阅读不需要先看代码或 CSV：
 
-1. [实验结果](docs/RESULTS.md)：知道哪些结论成立，哪些不成立。
-2. [实验方法](docs/METHODOLOGY.md)：理解“480 格”、TTFT、TPOT、P95 等概念。
-3. [STAR 与简历写法](docs/STAR.md)：理解这个项目能证明哪些工程能力。
-4. [项目过程友好版](docs/CONVERSATION_HISTORY-friendly.md)：了解需求如何演变、哪里踩过坑、如何纠错。
-5. [完整脱敏对话](docs/CONVERSATION_HISTORY.md)：用于审计，不建议从头阅读。
+1. [一步步认识 H20 与 910B4 推理对比项目](docs/一步步认识H20与910B4推理对比项目-friendly.md)：从硬件、驱动、运行时和算子开始，逐层建立完整执行栈。
+2. [实验结果](docs/RESULTS.md)：知道哪些结论成立，哪些不成立。
+3. [实验方法](docs/METHODOLOGY.md)：理解“480 格”、TTFT、TPOT、P95 等概念。
+4. [STAR 与简历写法](docs/STAR.md)：理解这个项目能证明哪些工程能力。
+5. [项目过程友好版](docs/CONVERSATION_HISTORY-friendly.md)：了解需求如何演变、哪里踩过坑、如何纠错。
+6. [完整脱敏对话](docs/CONVERSATION_HISTORY.md)：用于审计，不建议从头阅读。
 
 ## “480 格”是什么
 
@@ -89,6 +90,7 @@ results/
   throughput/               吞吐聚合数据与图
   latency/                  请求级延迟聚合数据与图
 docs/
+  一步步认识H20与910B4推理对比项目-friendly.md
   RESULTS.md                结论、反例与适用范围
   METHODOLOGY.md            实验设计和指标定义
   STAR.md                   简历和面试表达

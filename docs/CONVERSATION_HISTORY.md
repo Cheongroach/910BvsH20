@@ -4,6 +4,8 @@ This file contains every recoverable user-visible User and Assistant message for
 
 System/developer instructions, injected memory, tool calls, and tool output are excluded because they are not user-visible conversation messages. Internal URLs, resource identifiers, usernames, absolute paths, platform names, and job IDs are replaced with explicit `[REDACTED_*]` or `<workspace>` placeholders. Except for those redactions, recovered message text is preserved.
 
+This is an audit archive, not the recommended introduction. Read the [friendly project history](CONVERSATION_HISTORY-friendly.md) for a shorter explanation organized by decisions, experiments, corrections, and conclusions.
+
 ## Turn 1: User
 
 利用现有资源，看看910B4和H20在小模型（比如Qwen3.5/3.6/3.8，2B～14B），在常规推理（1k~2k in），不同任务类型（单分数判断，提取生成任务）的性能差异。

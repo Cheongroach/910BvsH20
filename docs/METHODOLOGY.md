@@ -1,102 +1,226 @@
-# Methodology
+# 实验方法：怎样公平比较两套推理环境
 
-## Goal
+## 研究问题
 
-The benchmark asks a deployment question: under controlled request shapes,
-how do single-device H20 and Ascend 910B4 vLLM stacks behave in throughput,
-first-token latency, generation latency, and tail latency?
+实验要回答的是：
 
-It is designed for repeatable comparison, not for estimating theoretical peak
-FLOPS or declaring one accelerator universally faster.
+> 在请求内容和计算形状相同时，H20 与 Ascend 910B4 单卡部署的吞吐、首 token 延迟、生成速度和尾延迟分别怎样？
 
-## Reproducibility controls
+实验不估计理论 FLOPS，也不试图脱离软件栈评价芯片。两端使用不同的运行时和 vLLM 后端，因此结论对象是**完整部署栈**。
 
-- Model files are identified by revision and SHA-256 in the manifests.
-- The selected 512-example SQuAD v1.1 workload has a pinned SHA-256.
-- Prompt token counts are exact after tokenization.
-- Generation uses temperature 0, fixed minimum and maximum output lengths,
-  EOS suppression, and a fixed seed.
-- Non-prefix-cache cells receive a unique leading document identifier.
-- Full-shape warmups run before formal timing.
-- Cross-hardware closed-loop requests are paired using input hashes.
-- Engine versions and effective startup arguments are emitted with each run.
+## 先理解七个词
 
-Model weights are not stored in this repository. The manifests describe the
-artifacts needed to reconstruct the local model directories.
+| 术语 | 含义 |
+|---|---|
+| Token | 模型处理文本的基本单位，不等同于一个汉字或英文单词 |
+| B | 模型命名中的参数规模单位，1B 约为十亿参数 |
+| 1K/2K | 本文分别指 1,024/2,048 token |
+| Batch | 一次交给离线引擎的一组请求数量 |
+| Concurrency | 在线测试中同时在途的请求上限 |
+| Cell（格） | 一种唯一实验配置 |
+| P95 | 100 个请求按耗时排序后，约第 95 个请求的值 |
 
-## Primary throughput matrix
+Batch 和 concurrency 都与“同时处理多个请求”有关，但测试路径不同：首轮吞吐矩阵使用离线 batch；请求级延迟矩阵使用在线或异步并发。
 
-The 480 cells are the Cartesian product:
+## 实验一：480 格吞吐矩阵
+
+吞吐实验枚举以下组合：
 
 ```text
-2 hardware targets
-x 5 models
-x 2 configurations
-x 2 input lengths
-x 3 output lengths
-x 4 batch sizes
-= 480 unique cells
+2 种硬件
+× 5 个模型
+× 2 种配置
+× 2 种输入长度
+× 3 种输出长度
+× 4 种 batch
+= 480 格
 ```
 
-The dimensions are:
+具体维度是：
 
-- Hardware: H20, 910B4
-- Models: Qwen3.5-2B/4B/9B, Qwen3-14B, Qwen3-4B
-- Configuration: baseline, combo
-- Input length: 1,024 or 2,048 tokens
-- Output length: 1, 64, or 128 tokens
-- Batch size: 1, 8, 32, or 128
+| 维度 | 取值 |
+|---|---|
+| 硬件 | H20、910B4 |
+| 模型 | Qwen3.5-2B/4B/9B、Qwen3-14B、Qwen3-4B |
+| 配置 | baseline、combo |
+| 输入长度 | 1,024、2,048 token |
+| 输出长度 | 1、64、128 token |
+| Batch | 1、8、32、128 |
 
-A cell is a unique configuration, not a request and not a scheduler job.
-Repeated runs and follow-up ablations explain why the dataset contains more
-measurements than primary cells.
+例如：
 
-`baseline` uses eager execution without chunked prefill. `combo` enables the
-available graph path and chunked prefill. Additional rows independently probe
-graph/compile modes, chunked prefill, prefix caching, FP8, and MTP where the
-software stack supports them.
+```text
+H20 × Qwen3.5-4B × combo
+× 1,024 输入 × 128 输出 × batch 32
+```
 
-## Request-level latency matrix
+这是一格。它不是一条请求，也不是一个调度任务。一格会运行多条请求；额外的重复测量和消融实验使底层测量总数达到 1,326，高于 480。
 
-The latency benchmark adds Qwen3.5, Qwen3.6, and Qwen3.8-27B models and
-exercises two delivery paths:
+### 输出长度为什么是 1、64、128
 
-- Offline: asynchronous vLLM token delivery
-- Online: OpenAI-compatible SSE over an isolated loopback endpoint
+- 1 token：模拟“只输出类别或分数”的判断任务；
+- 64 token：模拟短答案或提取任务的计算形状；
+- 128 token：模拟较长生成。
 
-Closed-loop tests use concurrency 1, 8, or 32, depending on the selected
-matrix. Open-loop tests use Poisson arrivals at deployment-specific fractions
-of a measured closed-loop service window.
+这些固定长度只控制计算量。因为实验会强制模型生成指定数量的 token，它们不能直接代表自然业务答案的质量。
 
-Each request records token arrival times, token counts, hashes, and errors.
-The public CSV contains cell summaries rather than individual request traces.
+### Baseline 与 combo
 
-## Metric definitions
+- `baseline`：eager 执行，关闭 chunked prefill；
+- `combo`：打开当前后端可用的图/编译路径和 chunked prefill。
 
-- **TTFT**: first observed non-empty token chunk time minus request start.
-- **E2E**: final completion time minus request start.
-- **TPOT**: time from first to final observed token divided by output tokens
-  minus one. It is undefined for one-token outputs.
-- **ITL**: interval between adjacent stream chunks only when both chunks
-  contain exactly one token. This avoids pretending that merged chunks expose
-  exact token arrival times.
-- **Requests/s**: successful requests divided by cell wall time.
-- **Output tokens/s**: successful completion tokens divided by cell wall time.
+4B 模型还单独测试以下优化：
 
-Percentiles use the nearest-rank definition.
+| 优化 | 直观作用 |
+|---|---|
+| Eager | 每次按普通执行路径运行，是本项目的基础参照 |
+| Compile | 编译模型执行路径，减少部分 Python/框架开销并优化算子 |
+| Graph | 记录并重复执行较稳定的计算图，减少重复调度和 kernel launch 开销 |
+| Chunked prefill | 把较长提示词的 prefill 拆成小块，便于调度和控制 token 预算 |
+| Prefix cache | 缓存多请求共享的提示词前缀，避免重复计算 |
+| FP8 | 使用 8-bit 浮点路径降低部分计算和权重开销；需要单独检查质量 |
+| MTP | 一次提出多个候选 token，再由模型验证是否接受 |
 
-## Validation
+单独消融的目的是区分“哪一项带来收益”，而不是只比较“全部打开”和“全部关闭”。
 
-Run:
+## 实验二：728 格请求级延迟矩阵
+
+吞吐高并不代表用户等待时间短，因此第二套实验记录每个请求的 token 到达时间。
+
+模型扩展为：
+
+```text
+Qwen3.5-2B/4B/9B
+Qwen3-14B
+Qwen3.5/3.6/3.8-27B
+```
+
+测试包含两条路径：
+
+| 路径 | 测到什么 |
+|---|---|
+| Offline | vLLM 异步引擎把 token 交给调用者的时间 |
+| Online | 隔离的本机流式 HTTP 服务响应时间；SSE 表示服务端持续推送 token |
+
+在线闭环测试维持固定并发，例如 8 或 32：一个请求结束后再补入一个请求。开放到达测试按 Poisson 过程安排请求，更接近“请求自行到来”的服务负载。
+
+开放到达率由每套部署各自的闭环窗口推导。因此“相对 90% 负载”不表示两端承受相同绝对 QPS，不能直接用来做硬件公平排名。
+
+## 指标如何计算
+
+设请求开始时间为 \(t_0\)，第一个可观察 token 到达时间为 \(t_1\)，最后一个 token 到达时间为 \(t_n\)，输出 token 数为 \(n\)。
+
+### TTFT：多久看到第一个 token
+
+```text
+TTFT = t1 - t0
+```
+
+TTFT 包含排队、prefill、调度和调用链开销。值越低，用户越早看到响应开始。
+
+### E2E：多久得到完整答案
+
+```text
+E2E = 请求完成时间 - t0
+```
+
+E2E 同时受 TTFT 和后续生成速度影响。
+
+### TPOT：首 token 之后的平均生成时间
+
+当 \(n > 1\)：
+
+```text
+TPOT = (tn - t1) / (n - 1)
+```
+
+TPOT 越低，持续生成越快。单 token 输出没有 TPOT。
+
+### ITL：相邻 token 的实际间隔
+
+ITL 是相邻两个可观察 token 到达时间之差。只有前后两个流式 chunk 都恰好包含一个 token 时，间隔才是精确可观察的。
+
+如果服务一次合并返回多个 token，实验不会假造这些 token 在 chunk 内部的时间戳。因此：
+
+- TPOT 仍可按整个请求计算；
+- 精确 ITL 样本会减少；
+- CSV 中的 `exact_itl_coverage` 记录覆盖率。
+
+### Throughput：系统总产能
+
+```text
+Requests/s = 成功请求数 / 测量墙钟时间
+Output tokens/s = 成功输出 token 总数 / 测量墙钟时间
+```
+
+判断任务更适合看 requests/s；固定长度生成更适合看 output tokens/s。
+
+### P50、P95、P99
+
+项目使用 nearest-rank 分位数。P95 表示约 95% 的样本不高于这个值。P95 不是最大值，也不是“每次请求都能达到”的保证。
+
+## 如何控制比较条件
+
+为了减少无关差异，实验使用以下控制：
+
+1. 模型文件在 manifest 中记录 revision、大小和 SHA-256。
+2. 两端使用同一份 512 条 SQuAD v1.1 工作负载，数据文件有固定哈希。
+3. Tokenizer 处理后，输入严格为 1,024 或 2,048 token。
+4. Temperature 为 0，随机种子固定。
+5. `min_tokens = max_tokens`，并忽略 EOS，确保输出计算形状一致。
+6. 普通吞吐请求带唯一文档标识，避免意外共享前缀。
+7. 只有 prefix-cache 消融故意复用共享前缀。
+8. 正式计时前执行同形状预热，减少首次编译污染。
+9. 跨硬件闭环请求使用输入哈希配对。
+10. 在线服务使用隔离端口，避免请求误连到其他实验服务。
+
+这些控制提高了可比性，但不能消除两端软件版本和主机环境的差异。
+
+## 数据验证
+
+运行：
 
 ```bash
 python analysis/validate_public_results.py
 ```
 
-The validator reconstructs the 480-cell product, checks all 728 latency rows,
-verifies 58,240 successful requests, checks the stored hash-pair validation,
-and rejects known internal provenance columns.
+校验器会重新检查：
 
-The original collection process also checked output lengths, matrix coverage,
-request errors, paired input hashes, and quality-probe group coverage before
-the aggregate files were selected for publication.
+- 480 种主吞吐配置是否全部存在；
+- 聚合的底层测量是否为 1,326 次；
+- 延迟 CSV 是否正好有 728 格；
+- 58,240 个请求是否全部成功；
+- 23,520 对跨硬件输入是否无哈希不一致；
+- 公开 CSV 是否包含已禁止的内部来源列。
+
+当前公开结果通过全部检查。
+
+输入哈希一致只说明“输入相同”，不说明“输出质量相同”。自然答案质量探针与固定长度性能测试是两类证据，不能互相替代。
+
+## 如何复现
+
+公开仓库不包含模型权重。模型目录需要按 `data/manifest.json` 或 `data/latency_model_manifest.json` 准备。
+
+验证聚合数据和重画主图不需要 GPU/NPU：
+
+```bash
+python -m pip install -r requirements.txt
+python analysis/validate_public_results.py
+python analysis/plot_public_results.py
+```
+
+运行基准需要对应硬件的 vLLM、PyTorch/torch-npu、驱动和运行时。示例命令见仓库 [README](../README.md)。
+
+## 仍未回答的问题
+
+本实验没有回答：
+
+- 生产网关和真实网络加入后的端到端 SLA；
+- 不同软件版本完全对齐后的纯硬件差异；
+- 每个 P95 的独立置信区间；
+- 固定输出性能与自然回答质量之间的关系；
+- 27B 高并发退化的机制根因。
+
+最后一项需要 profiler、调度事件、显存/KV cache 时间线和针对性复现实验，而不能只靠当前吞吐与延迟表推断。
+
+继续阅读：[实验结果](RESULTS.md) · [STAR 与简历表达](STAR.md) · [返回项目首页](../README.md)

@@ -26,11 +26,12 @@ HeteroInferLab 是一套 H20 与 Ascend 910B4 单卡大模型推理对比实验�
 第一次阅读不需要先看代码或 CSV：
 
 1. [一步步认识 H20 与 910B4 推理对比项目](docs/一步步认识H20与910B4推理对比项目-friendly.md)：从硬件、驱动、运行时和算子开始，逐层建立完整执行栈。
-2. [实验结果](docs/RESULTS.md)：知道哪些结论成立，哪些不成立。
-3. [实验方法](docs/METHODOLOGY.md)：理解“480 格”、TTFT、TPOT、P95 等概念。
-4. [STAR 与简历写法](docs/STAR.md)：理解这个项目能证明哪些工程能力。
-5. [项目过程友好版](docs/CONVERSATION_HISTORY-friendly.md)：了解需求如何演变、哪里踩过坑、如何纠错。
-6. [完整脱敏对话](docs/CONVERSATION_HISTORY.md)：用于审计，不建议从头阅读。
+2. [性能监控、Profiling 与调试工具对照](docs/性能监控Profiling与调试工具对照-friendly.md)：平行比较 Grafana、设备 CLI、框架 profiler、系统 profiler 和 sanitizer。
+3. [实验结果](docs/RESULTS.md)：知道哪些结论成立，哪些不成立。
+4. [实验方法](docs/METHODOLOGY.md)：理解“480 格”、TTFT、TPOT、P95 等概念。
+5. [STAR 与简历写法](docs/STAR.md)：理解这个项目能证明哪些工程能力。
+6. [项目过程友好版](docs/CONVERSATION_HISTORY-friendly.md)：了解需求如何演变、哪里踩过坑、如何纠错。
+7. [完整脱敏对话](docs/CONVERSATION_HISTORY.md)：用于审计，不建议从头阅读。
 
 ## “480 格”是什么
 
@@ -79,6 +80,7 @@ H20 × Qwen3.5-4B × combo
 src/
   throughput_benchmark.py   固定输入/输出形状的吞吐与质量探针
   latency_benchmark.py      离线异步与在线流式延迟测试
+  profile_probe.py          CUDA/NPU 共用的框架 profiler 探针
 analysis/
   validate_public_results.py
   plot_public_results.py
@@ -89,8 +91,10 @@ data/
 results/
   throughput/               吞吐聚合数据与图
   latency/                  请求级延迟聚合数据与图
+  observability/            脱敏监控与 profiling 调用证据
 docs/
   一步步认识H20与910B4推理对比项目-friendly.md
+  性能监控Profiling与调试工具对照-friendly.md
   RESULTS.md                结论、反例与适用范围
   METHODOLOGY.md            实验设计和指标定义
   STAR.md                   简历和面试表达
@@ -124,6 +128,7 @@ python analysis/plot_public_results.py
 - 延迟矩阵 `728/728` 格；
 - 58,240 个请求全部成功；
 - 23,520 对跨硬件输入哈希一致。
+- 历史监控汇总保留 H20 41 个和 910B4 54 个时序点，并保持空序列为 `null`。
 
 ## 运行新的实验
 

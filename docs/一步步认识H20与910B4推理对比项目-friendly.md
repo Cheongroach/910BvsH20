@@ -6,7 +6,7 @@
 
 请按顺序阅读。每一步只增加一个概念。读完一步后，先回答末尾的问题；答不出来就停在这里，不要继续记后面的版本号。
 
-全文分为 10 个阶段。本文不会重复 embedding、位置编码或 Attention 的基础知识。
+全文分为 11 个阶段。本文不会重复 embedding、位置编码或 Attention 的基础知识。
 
 实验数字来自 2026-10-19 已完成的历史实验，不是你当前机器刚刚测出的结果。
 
@@ -136,7 +136,7 @@ NVIDIA 文档常用 CUDA core、Tensor Core、SM 等术语；Ascend 使用自己
 
 设备内存不是主机内存。CPU 主机有 225 GiB 内存，不表示 H20 多了 225 GiB 可直接运行 kernel 的显存。
 
-本项目记录了 910B4 的资源型号为 `Ascend910B4-64G`。现有公开证据没有记录 H20 的总物理显存，所以本文不补写一个未经本实验核验的数值。
+本项目记录了 910B4 的资源型号为 `Ascend910B4-64G`。2026-10-27 补充查询历史 Grafana 时，H20 的 `gpu_mem_total` 返回 102,625,181,696 bytes，约 95.6 GiB；910B4 面板的 `npu_hbm_total` 原值为 65,536，对应 64 GiB 资源。两个面板的原生单位不同，不能直接拿原值相除。
 
 只记住：**主机内存和设备内存是两套不同资源。**
 
@@ -1157,9 +1157,153 @@ python analysis/validate_public_results.py
 
 ---
 
+## 第十一阶段：用监控和 profiler 继续定位
+
+### 第 58 步：持续监控和 profiling 回答不同问题
+
+Grafana 持续采集低频时序，适合回看长任务的设备利用率、内存、功耗和网络。
+
+Profiler 只采一个受控窗口，适合定位 CPU、运行时、设备 kernel 或算子的时间。
+
+只记住：**监控回答“什么时候异常”，profiler 回答“异常时间花在哪里”。**
+
+停下来回答：一条 30 分钟 DutyCycle 曲线能否直接告诉你哪个 kernel 最慢？
+
+---
+
+### 第 59 步：两端可以通过同一 Grafana 流程取时序
+
+共同流程是：
+
+```text
+Job Run ID
+  ↓ get-grafana
+带 Trial 和时间窗的 URL
+  ↓ describe
+面板 ID 与底层 metric
+  ↓ panel-data
+timestamp → value 时序
+```
+
+解释数据时要看底层 metric，不能只看面板标题。
+
+只记住：**相同查询流程不保证两端计数器语义相同。**
+
+停下来回答：两个面板都叫 “Tensor Activity”，是否足以证明测量对象相同？
+
+---
+
+### 第 60 步：本次历史监控可以回看，但不能当稳态 profile
+
+H20 4B 历史任务的 DutyCycle 共 41 个点，平均 36.4%、峰值 96%；910B4 共 54 个点，平均 38.5%、峰值 100%。
+
+两个窗口都包含初始化、运行和空闲，并且样本数不同。因此不能把平均值当作稳态 kernel 利用率，也不能用 `38.5 / 36.4` 得出性能倍率。
+
+只记住：**完整任务窗口平均值只能描述该窗口，不能替代同 shape benchmark。**
+
+停下来回答：DutyCycle 平均值较高的一端，吞吐是否必然较高？
+
+---
+
+### 第 61 步：`nvidia-smi` 与 `npu-smi` 都是现场快照
+
+H20 使用 `nvidia-smi` 查看型号、驱动、显存、利用率、功耗和温度。
+
+910B4 使用 `npu-smi` 查看设备、芯片、驱动/固件、HBM、AI Core、功耗、温度和健康状态。
+
+只记住：**设备 CLI 适合确认现场状态，不负责解释单个 kernel 内部瓶颈。**
+
+停下来回答：`npu-smi info` 能否给出某个 GDN 算子的 MTE 搬运占比？
+
+---
+
+### 第 62 步：框架级 profiler 是最接近的一组平行工具
+
+两端分别使用：
+
+```text
+H20：  torch.profiler + ProfilerActivity.CUDA
+910B4：torch_npu.profiler + ProfilerActivity.NPU
+```
+
+共同输入是采集代码段、shape、memory 和 stack 开关；共同输出是算子表、CPU/device 时间与 trace。
+
+本次最小 probe 中，H20 生成 82,151-byte Chrome trace；910B4 生成 536,119 bytes、88 个文件，包括 `trace_view.json`、kernel/operator CSV 和分析数据库。
+
+只记住：**框架 profiler 用于把 PyTorch op 关联到设备活动。**
+
+停下来回答：Profiler trace 成功生成是否同时证明模型输出正确？
+
+---
+
+### 第 63 步：`nsys` 与 `msprof` 都能采应用时间线
+
+H20 的 `nsys` 关注 CUDA API、stream、kernel、memcpy、CPU 线程和 NVTX。
+
+910B4 的 `msprof` 关注 AscendCL、runtime task、stream、AI CPU、AI Core/Vector Core、HCCS 和 PCIe。
+
+本次镜像检查中，H20 没有安装 `nsys`；910B4 的 `msprof` 实际返回 0，并生成 `PROF_*` 目录。
+
+输出格式不同：
+
+```text
+nsys   → .nsys-rep
+msprof → PROF_* 目录及 JSON/CSV
+```
+
+只记住：**两者位于相似层级，但报告不能互相打开。**
+
+停下来回答：能否用 Nsight Systems 直接打开 `msprof` 的 `PROF_*` 目录？
+
+---
+
+### 第 64 步：`ncu` 与 Ascend AI Core 指标不是一对一工具
+
+`ncu` 面向 NVIDIA kernel，可采 occupancy、warp stall、SM throughput 和内存访问，并可能 replay kernel 多次。
+
+Ascend 侧使用 `msprof --aic-metrics` 或 `msprof op`，可查看 `PipeUtilization`、Memory、L0、UB、L2 和资源冲突等指标。
+
+本次 H20 镜像没有安装 `ncu`；910B4 的 `msprof --aic-metrics=PipeUtilization` 已完成调用。这个结果说明镜像能力不同，不能写成 NVIDIA 生态没有 `ncu`。
+
+只记住：**它们都用于下钻单 kernel/算子，但硬件指标体系不同。**
+
+停下来回答：能否把 `ncu` 的 SM throughput 与 `PipeUtilization` 百分比直接相除？
+
+---
+
+### 第 65 步：正确性调试使用 sanitizer，不使用吞吐表
+
+H20 使用 Compute Sanitizer 的 memcheck、racecheck、initcheck 和 synccheck。
+
+910B4 使用 msSanitizer 检查非法读写、多核踩踏、非对齐访问、非法释放和内存泄漏等问题。
+
+本次只验证了两个 sanitizer 可执行文件存在，没有故意构造错误 kernel，因此没有“发现零错误”的结论。
+
+只记住：**sanitizer 用于发现错误，不用于测生产吞吐。**
+
+停下来回答：被 sanitizer 放慢后的请求延迟能否写入正式性能矩阵？
+
+---
+
+### 第 66 步：一方特有的方法必须保留原生语义
+
+H20 有 CUDA Graph/NVTX、SM/warp、Nsight Compute replay 和 NVLink 等 NVIDIA 语义。
+
+910B4 有 AI Core/Vector/Cube/MTE、PipeUtilization、HCCS 和 GM/UB/L0/L1 等 Ascend 语义。
+
+应先把问题放到相同层级，再使用各自原生工具，不能为了表格对称而制造不存在的一一映射。
+
+只记住：**平行比较的目标是回答同一个问题，不是强迫工具同名。**
+
+停下来回答：Ascend 没有 SM 这个硬件术语时，应该怎样比较？
+
+详细命令、输入输出和真实时序见[性能监控、Profiling 与调试工具对照](性能监控Profiling与调试工具对照-friendly.md)。
+
+---
+
 ## 最终检查
 
-如果你已经能回答下面 8 个问题，就可以继续读完整结果和代码：
+如果你已经能回答下面 10 个问题，就可以继续读完整结果和代码：
 
 1. 为什么项目比较的是完整部署栈，而不是纯芯片？
 2. H20 路径中的 CUDA 与 910B4 路径中的 CANN 分别处在哪一层？
@@ -1169,10 +1313,13 @@ python analysis/validate_public_results.py
 6. 为什么两端都叫 `graph`，也不能假设底层实现相同？
 7. 为什么 H20 的长输出优势不能推广到所有短输出任务？
 8. 为什么 27B 高并发退化目前只能称为现象，不能称为已知硬件根因？
+9. 为什么 Grafana DutyCycle 不能替代 profiler 时间线？
+10. 为什么 `ncu` 与 `msprof` 不能按同名指标直接比较？
 
 建议继续阅读：
 
-1. [实验结果](RESULTS.md)
-2. [实验方法](METHODOLOGY.md)
-3. [STAR 与简历表达](STAR.md)
-4. [返回项目首页](../README.md)
+1. [性能监控、Profiling 与调试工具对照](性能监控Profiling与调试工具对照-friendly.md)
+2. [实验结果](RESULTS.md)
+3. [实验方法](METHODOLOGY.md)
+4. [STAR 与简历表达](STAR.md)
+5. [返回项目首页](../README.md)

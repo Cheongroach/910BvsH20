@@ -11,6 +11,8 @@ THROUGHPUT_CSV = ROOT / "results" / "throughput" / "summary.csv"
 THROUGHPUT_VALIDATION = ROOT / "results" / "throughput" / "validation.json"
 LATENCY_CSV = ROOT / "results" / "latency" / "summary.csv"
 LATENCY_VALIDATION = ROOT / "results" / "latency" / "validation.json"
+OBSERVABILITY_SUMMARY = ROOT / "results" / "observability" / "monitoring-summary.json"
+PROFILING_SUMMARY = ROOT / "results" / "observability" / "profiling-summary.json"
 
 FORBIDDEN_COLUMNS = {
     "source",
@@ -112,10 +114,90 @@ def validate_latency():
     }
 
 
+def validate_observability():
+    summary = json.loads(OBSERVABILITY_SUMMARY.read_text(encoding="utf-8"))
+    h20 = summary["h20"]
+    npu = summary["ascend_910b4"]
+
+    require(h20["samples"] == 41, "H20 monitoring sample count changed")
+    require(npu["samples"] == 54, "910B4 monitoring sample count changed")
+    require(
+        h20["metrics"]["duty_cycle_percent"]["metric"]
+        == "lab.arnold.instance_monitor.gpu_duty_cycle",
+        "H20 duty-cycle metric changed",
+    )
+    require(
+        npu["metrics"]["memory_bandwidth_utilization_percent"]["metric"]
+        == "lab.arnold.instance_monitor.npu_hbm_bandutil",
+        "910B4 bandwidth metric changed",
+    )
+    require(
+        h20["metrics"]["device_memory_total_bytes"]["max"] == 102625181696,
+        "H20 device-memory total changed",
+    )
+    require(
+        npu["metrics"]["hbm_total_panel_native"]["max"] == 65536,
+        "910B4 panel-native HBM total changed",
+    )
+    require(
+        npu["metrics"]["hbm_used"]["max"] is None,
+        "missing 910B4 used-memory series was converted to a value",
+    )
+    require(
+        npu["metrics"]["cpu_panel"]["max"] is None,
+        "empty 910B4 CPU panel was converted to a value",
+    )
+
+    return {
+        "source": summary["source"],
+        "h20_samples": h20["samples"],
+        "npu_samples": npu["samples"],
+        "missing_series_preserved": 2,
+    }
+
+
+def validate_profiling():
+    summary = json.loads(PROFILING_SUMMARY.read_text(encoding="utf-8"))
+    h20 = summary["h20"]
+    npu = summary["ascend_910b4"]
+
+    require(h20["job_status"] == "done", "H20 profiler job is not done")
+    require(npu["job_status"] == "done", "910B4 profiler job is not done")
+    require(h20["trial_status"] == "finished", "H20 profiler trial did not finish")
+    require(npu["trial_status"] == "finished", "910B4 profiler trial did not finish")
+    require(h20["pod_exit_status"] == 0, "H20 profiler pod did not exit cleanly")
+    require(npu["pod_exit_status"] == 0, "910B4 profiler pod did not exit cleanly")
+    require(h20["torch_profiler"]["return_code"] == 0, "H20 torch profiler failed")
+    require(npu["torch_npu_profiler"]["return_code"] == 0, "torch-npu profiler failed")
+    require(npu["msprof"]["return_code"] == 0, "msprof failed")
+    require(h20["torch_profiler"]["trace_bytes"] == 82151, "H20 trace size changed")
+    require(
+        npu["torch_npu_profiler"]["representative_outputs"]["trace_view.json"] == 158906,
+        "910B4 trace-view size changed",
+    )
+    require(
+        not h20["tool_inventory"]["nsys"] and not h20["tool_inventory"]["ncu"],
+        "H20 image tool inventory changed",
+    )
+    require(
+        npu["environment"]["cann_path_observed"].endswith("cann-8.5.1"),
+        "910B4 probe CANN evidence changed",
+    )
+
+    return {
+        "h20_torch_profiler": "passed",
+        "npu_torch_profiler": "passed",
+        "npu_msprof": "passed",
+        "persisted_assets": 0,
+    }
+
+
 def main():
     result = {
         "throughput": validate_throughput(),
         "latency": validate_latency(),
+        "observability": validate_observability(),
+        "profiling": validate_profiling(),
     }
     print(json.dumps(result, indent=2, sort_keys=True))
     print("Public result validation passed.")

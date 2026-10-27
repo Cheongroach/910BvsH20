@@ -1,0 +1,156 @@
+{
+  "collected_at": "2026-10-27",
+  "source": "Merlin Grafana OpenAPI panel-data",
+  "source_workload": {
+    "date": "2026-10-19",
+    "model": "Qwen3.5-4B",
+    "note": "Each window includes initialization, active work, and idle intervals."
+  },
+  "h20": {
+    "samples": 41,
+    "metrics": {
+      "duty_cycle_percent": {
+        "metric": "lab.arnold.instance_monitor.gpu_duty_cycle",
+        "min": 0,
+        "max": 96,
+        "mean": 36.41463414634146
+      },
+      "device_memory_total_bytes": {
+        "metric": "lab.arnold.instance_monitor.gpu_mem_total",
+        "min": 102625181696,
+        "max": 102625181696,
+        "mean": 102625181696
+      },
+      "device_memory_used_bytes": {
+        "metric": "lab.arnold.instance_monitor.gpu_mem_used",
+        "min": 614727680,
+        "max": 91086716928,
+        "mean": 55674247902.13155
+      },
+      "memory_bandwidth_utilization_percent": {
+        "metric": "lab.arnold.instance_monitor.gpu_mem_bw_util",
+        "min": 0.0004,
+        "max": 44.9925,
+        "mean": 7.833158536585366
+      },
+      "tensor_activity_percent": {
+        "metric": "lab.arnold.instance_monitor.gpu_tensor_activity",
+        "min": 0,
+        "max": 87.409,
+        "mean": 19.453507317073175
+      },
+      "sm_activity_percent": {
+        "metric": "lab.arnold.instance_monitor.gpu_sm_activity",
+        "min": 0,
+        "max": 97.5398,
+        "mean": 26.00751707317073
+      },
+      "sm_occupancy_percent": {
+        "metric": "lab.arnold.instance_monitor.gpu_sm_occupancy",
+        "min": 0,
+        "max": 20.4981,
+        "mean": 5.265334146341464
+      },
+      "power_watts": {
+        "metric": "lab.arnold.instance_monitor.gpu_power_draw",
+        "min": 128.8384,
+        "max": 396.9674,
+        "mean": 204.3568975609756
+      },
+      "nvlink_rx_bytes_per_second": {
+        "metric": "lab.arnold.instance_monitor.gpu_nvlink_bw_rx",
+        "min": 0,
+        "max": 0,
+        "mean": 0
+      },
+      "nvlink_tx_bytes_per_second": {
+        "metric": "lab.arnold.instance_monitor.gpu_nvlink_bw_tx",
+        "min": 0,
+        "max": 0,
+        "mean": 0
+      }
+    }
+  },
+  "ascend_910b4": {
+    "samples": 54,
+    "metrics": {
+      "duty_cycle_percent": {
+        "metric": "lab.arnold.instance_monitor.gpu_duty_cycle",
+        "min": 0,
+        "max": 100,
+        "mean": 38.48148148148148
+      },
+      "hbm_total_panel_native": {
+        "metric": "lab.arnold.instance_monitor.npu_hbm_total",
+        "min": 65536,
+        "max": 65536,
+        "mean": 65536,
+        "unit_note": "The panel reports 65536 for a 64 GiB resource. Raw values are retained because this series does not use the H20 byte unit."
+      },
+      "hbm_used": {
+        "metric": "lab.arnold.instance_monitor.npu_hbm_used",
+        "min": null,
+        "max": null,
+        "mean": null,
+        "result": "No used-memory series was returned by this panel."
+      },
+      "memory_bandwidth_utilization_percent": {
+        "metric": "lab.arnold.instance_monitor.npu_hbm_bandutil",
+        "min": 0,
+        "max": 57,
+        "mean": 14.484844444444445
+      },
+      "panel_labeled_tensor_activity_percent": {
+        "metric": "lab.arnold.instance_monitor.gpu_tensor_activity",
+        "min": 0,
+        "max": 70,
+        "mean": 23.776088888888893
+      },
+      "panel_labeled_sm_activity_percent": {
+        "metric": "lab.arnold.instance_monitor.gpu_sm_activity",
+        "min": 0,
+        "max": 70,
+        "mean": 23.776088888888893,
+        "interpretation": "This series is identical to the panel-labeled tensor activity series and is not treated as an independent NPU hardware counter."
+      },
+      "power_watts": {
+        "metric": "lab.arnold.instance_monitor.gpu_power_draw",
+        "min": 99.2,
+        "max": 315.7,
+        "mean": 155.36997962962965
+      },
+      "ecc_single_bit_error_count": {
+        "metric": "lab.arnold.instance_monitor.npu_ecc_single_bit_error_cnt",
+        "min": 0,
+        "max": 0,
+        "mean": 0
+      },
+      "ecc_double_bit_error_count": {
+        "metric": "lab.arnold.instance_monitor.npu_ecc_double_bit_error_cnt",
+        "min": 0,
+        "max": 0,
+        "mean": 0
+      },
+      "hccs_rx_bandwidth": {
+        "metric": "lab.arnold.instance_monitor.npu_hccs_total_rx_bw",
+        "min": 0,
+        "max": 0,
+        "mean": 0,
+        "interpretation": "A zero series on this single-card workload does not distinguish inactivity from unsupported collection."
+      },
+      "cpu_panel": {
+        "metric": "tce.container.cpu_usage.mt",
+        "min": null,
+        "max": null,
+        "mean": null,
+        "result": "The queried panel returned no time series; this does not mean CPU use was zero."
+      }
+    }
+  },
+  "comparison_limits": [
+    "The two time windows have different sample counts and include non-steady-state intervals.",
+    "Metrics with different names or native units are not normalized into a hardware ratio.",
+    "Panel titles alone do not establish counter semantics; the underlying metric name is retained.",
+    "Zero and missing series are not interchangeable."
+  ]
+}

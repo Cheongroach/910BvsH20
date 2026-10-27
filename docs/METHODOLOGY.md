@@ -225,4 +225,4 @@ python analysis/plot_public_results.py
 
 最后一项需要 profiler、调度事件、显存/KV cache 时间线和针对性复现实验，而不能只靠当前吞吐与延迟表推断。
 
-继续阅读：[实验结果](RESULTS.md) · [STAR 与简历表达](STAR.md) · [返回项目首页](../README.md)
+继续阅读：[性能监控、Profiling 与调试工具对照](性能监控Profiling与调试工具对照-friendly.md) · [实验结果](RESULTS.md) · [STAR 与简历表达](STAR.md) · [返回项目首页](../README.md)

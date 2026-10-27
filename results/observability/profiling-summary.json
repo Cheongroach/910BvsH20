@@ -1,0 +1,123 @@
+{
+  "collected_at": "2026-10-27",
+  "workload": {
+    "operation": "silu(x @ y)",
+    "dtype": "bfloat16",
+    "matrix_shape": [
+      2048,
+      2048
+    ],
+    "warmup_steps": 3,
+    "profiled_steps": 10,
+    "note": "This is a profiler API probe, not a model throughput benchmark."
+  },
+  "h20": {
+    "job_status": "done",
+    "trial_status": "finished",
+    "pod_exit_status": 0,
+    "environment": {
+      "device_name": "NVIDIA H20",
+      "device_memory_reported_mib": 97871,
+      "driver_version": "535.261.03",
+      "torch_version": "2.13.0+cu129"
+    },
+    "tool_inventory": {
+      "nvidia_smi": true,
+      "torch_profiler_cuda": true,
+      "nsys": false,
+      "ncu": false,
+      "compute_sanitizer": true,
+      "compute_sanitizer_version": "2025.2.1.0",
+      "nvprof": true
+    },
+    "torch_profiler": {
+      "return_code": 0,
+      "wall_seconds": 4.57261611148715,
+      "trace_format": "Chrome trace JSON",
+      "trace_bytes": 82151,
+      "self_cuda_time_total_ms": 1.553,
+      "top_device_events": [
+        {
+          "name": "aten::mm",
+          "self_cuda_time_ms": 1.417,
+          "self_cuda_percent": 91.22,
+          "calls": 10
+        },
+        {
+          "name": "aten::silu",
+          "self_cuda_time_ms": 0.136383,
+          "self_cuda_percent": 8.78,
+          "calls": 10
+        }
+      ]
+    },
+    "system_profiler": {
+      "nsys_result": "not installed in the selected image",
+      "ncu_result": "not installed in the selected image",
+      "interpretation": "No Nsight Systems or Nsight Compute report was produced. Tool ecosystem availability is not treated as image availability."
+    }
+  },
+  "ascend_910b4": {
+    "job_status": "done",
+    "trial_status": "finished",
+    "pod_exit_status": 0,
+    "environment": {
+      "device_name": "Ascend910B4-1",
+      "torch_version": "2.10.0+cpu",
+      "torch_npu_version": "2.10.0.post4",
+      "cann_path_observed": "/usr/local/Ascend/cann-8.5.1",
+      "environment_note": "The probe environment is not the historical CANN 9.1 benchmark environment."
+    },
+    "tool_inventory": {
+      "npu_smi": true,
+      "torch_npu_profiler": true,
+      "msprof": true,
+      "msprof_analyze": false,
+      "mssanitizer": true,
+      "mlx_asset_uploader": false
+    },
+    "torch_npu_profiler": {
+      "return_code": 0,
+      "wall_seconds": 4.519817447056994,
+      "trace_bytes": 536119,
+      "file_count": 88,
+      "representative_outputs": {
+        "trace_view.json": 158906,
+        "ascend_pytorch_profiler.db": 188416,
+        "analysis.db": 8192,
+        "kernel_details.csv": 1763,
+        "operator_details.csv": 3026,
+        "operator_memory.csv": 5670,
+        "memory_record.csv": 13041,
+        "npu_module_mem.csv": 15811,
+        "step_trace_time.csv": 566,
+        "task_time.csv": 2196
+      },
+      "api_difference": "torch_npu.profiler.profile does not expose the torch.profiler key_averages method used by the CUDA path. Results are consumed from the generated analysis files."
+    },
+    "msprof": {
+      "return_code": 0,
+      "mode": "task-based",
+      "aic_metrics": "PipeUtilization",
+      "representative_outputs": {
+        "msprof_trace.json": 100513,
+        "op_summary.csv": 6291,
+        "op_statistic.csv": 323,
+        "api_statistic.csv": 1974,
+        "task_time.csv": 2333,
+        "msprof.db": 110592
+      }
+    }
+  },
+  "asset_manager_check": {
+    "h20_job_assets": 0,
+    "ascend_910b4_job_assets": 0,
+    "interpretation": "Local trace files were generated inside the short-lived pods, but no files were uploaded to the Merlin profiling asset service."
+  },
+  "comparison_limits": [
+    "Profiler wall time includes different collection and parsing work and is not a hardware latency comparison.",
+    "The H20 image lacked nsys and ncu; this is an image result, not a statement that NVIDIA does not provide those tools.",
+    "The 910B4 probe used CANN 8.5.1 and must not be used to explain the historical CANN 9.1 model benchmark.",
+    "The probe validates tool invocation and output structure, not Qwen model performance."
+  ]
+}
